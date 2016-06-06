@@ -22,7 +22,7 @@ class MainFrame(wx.Frame):
 
         main_panel = wx.Panel(self, wx.ID_ANY, pos=(0,0), size=(648,648))
         self.main_panel = main_panel
-        sub_panel_top = SubPanel(self, pos=(648,0), size=(400,450))
+        sub_panel_top = SubPanel(self, pos=(648,0), size=(400,445))
         self.sub_panel_top = sub_panel_top
         sub_panel_btm_left = SubPanel(self, pos=(648,450), size=(200,200))
         self.sub_panel_btm_left = sub_panel_btm_left
