@@ -13,6 +13,7 @@
 # Computer : computer
 #
 import wx
+import random
 
 gVersion = "1.0.0"
 gVec = [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)]
@@ -81,6 +82,12 @@ class MainFrame(wx.Frame):
         sub_panel_btm_left.SetSizer(sub_btm_left_layout)
         sub_panel_btm_right.SetSizer(sub_btm_right_layout)
 
+        # Game mode 
+        first_player  = "man"
+        second_player = "man"
+        self.first_player = first_player
+        self.second_player = second_player
+ 
         # Set initial state
         pass_flag = [0, 0]
         self.pass_flag = pass_flag
@@ -90,15 +97,11 @@ class MainFrame(wx.Frame):
         self.rest = rest
         now_color = "black"    # first palyer color is black
         self.now_color = now_color
-
+        comp_ai = 0 
+        self.comp_ai = comp_ai
+        
         self.setInitialState()
-       
-        # Game mode 
-        first_player  = "man"
-        second_player = "man"
-        self.first_player = first_player
-        self.second_player = second_player
- 
+        
         # Bind main_panel event
         for i in range(0, 8):
             for j in range(0, 8):
@@ -131,6 +134,7 @@ class MainFrame(wx.Frame):
     def doComputer(self, my_color):
         pos_list = []
         gain_list = []
+        self.comp_ai *= -1
         pos_list, gain_list = self.scanPuttableCell(my_color)
         if len(pos_list) == 0:
             self.log_textctrl.AppendText("Pass the " + my_color + " stone computer's turn.\n")
@@ -146,6 +150,7 @@ class MainFrame(wx.Frame):
                 return
             elif self.first_player == "computer" and self.second_player == "computer":
                 self.doComputer(self.now_color)
+                return
             else:
                 return
 
@@ -171,6 +176,7 @@ class MainFrame(wx.Frame):
 
             if self.first_player == "computer" and self.second_player == "computer":
                 self.doComputer(self.now_color)
+                return
         else:
             print ("error! illegal path.")
 
@@ -179,9 +185,31 @@ class MainFrame(wx.Frame):
         print ("gain_list:" + str(gain_list))
         
         # Insert a computer's AI here
-        next_pos = pos_list[0]
-        
+        if self.comp_ai >= 0:    # comp_ai == 0 => vs Man mode
+            next_pos = self.computerAi_Random(pos_list, gain_list)
+            #self.log_textctrl.AppendText("debug : computer AI = A turn.\n")
+        else:
+            next_pos = self.computerAi_1stGainMax(pos_list, gain_list)
+            #self.log_textctrl.AppendText("debug : computer AI = B turn.\n")
+
         return next_pos
+
+    def computerAi_Random(self, pos_list, gain_list):
+        length = len(pos_list)
+        index = random.randint(0, length-1)
+        return pos_list[index]
+
+    def computerAi_1stGainMax(self, pos_list, gain_list):
+        index_list = []
+        max_gain = max(gain_list)
+        for i, val in enumerate(gain_list):
+            if max_gain == val:
+                index_list.append(i)
+
+        length = len(index_list)
+        tgt = random.randint(0, length-1)
+        
+        return pos_list[index_list[tgt]]
 
     def putStone(self, put_pos, my_color):
         pos_list, gain_list = self.scanPuttableCell(my_color)
@@ -367,6 +395,10 @@ class MainFrame(wx.Frame):
         self.updateScoreLabel()
         self.now_color = "black"
         self.log_textctrl.Clear()
+        if self.first_player == "computer" and self.second_player == "computer":
+            self.comp_ai = random.choice([-1,1])
+        else:
+            self.comp_ai = 0
 
     def gameEnd(self):
         self.log_textctrl.AppendText("Game is end.\n")
