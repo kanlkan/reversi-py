@@ -14,7 +14,7 @@
 #
 import wx
 
-gVersion = "1.0.0"
+gVersion = "1.0.1"
 gVec = [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)]
 
 class MainFrame(wx.Frame):
