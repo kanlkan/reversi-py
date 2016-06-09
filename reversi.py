@@ -14,11 +14,12 @@
 #
 import wx
 
+gVersion = "1.0.0"
 gVec = [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)]
 
 class MainFrame(wx.Frame):
     def __init__(self):
-        wx.Frame.__init__(self, None, wx.ID_ANY, 'Revresi', size=(1050, 648+30))
+        wx.Frame.__init__(self, None, wx.ID_ANY, 'Revresi :' + gVersion, size=(1050, 648+30))
 
         main_panel = wx.Panel(self, wx.ID_ANY, pos=(0,0), size=(648,648))
         self.main_panel = main_panel
