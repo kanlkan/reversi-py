@@ -146,6 +146,7 @@ class MainFrame(wx.Frame):
                 return
             elif self.first_player == "computer" and self.second_player == "computer":
                 self.doComputer(self.now_color)
+                return
             else:
                 return
 
@@ -171,6 +172,7 @@ class MainFrame(wx.Frame):
 
             if self.first_player == "computer" and self.second_player == "computer":
                 self.doComputer(self.now_color)
+                return
         else:
             print ("error! illegal path.")
 
