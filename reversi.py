@@ -71,7 +71,7 @@ class MainFrame(wx.Frame):
                 cell_array[i][j].SetSizer(cell_layout[i][j])
 
         # Components in sub_panels
-        log_textctrl = wx.TextCtrl(sub_panel_top, wx.ID_ANY, size=(400,500), style=wx.TE_MULTILINE)
+        log_textctrl = wx.TextCtrl(sub_panel_top, wx.ID_ANY, size=(400,450), style=wx.TE_MULTILINE)
         self.log_textctrl = log_textctrl
         radio_button_array = ("Man vs Man", "Man vs Computer", "Computer vs Man", "Computer vs Computer")
         radio_box = wx.RadioBox(sub_panel_btm_left1, wx.ID_ANY, "Game mode", choices=radio_button_array, style=wx.RA_VERTICAL)
@@ -104,7 +104,7 @@ class MainFrame(wx.Frame):
         draw_num_label = wx.TextCtrl(sub_panel_btm_right11, wx.ID_ANY, "", pos=(0,5), size=(60,20), style=wx.TE_CENTER)
         self.comp_a_win_num_label = comp_a_win_num_label
         self.comp_b_win_num_label = comp_b_win_num_label
-        self.dwaw_num_label = draw_num_label
+        self.draw_num_label = draw_num_label
         comp_a_win_num_label.SetBackgroundColour("#999999")
         comp_b_win_num_label.SetBackgroundColour("#999999")
         draw_num_label.SetBackgroundColour("#999999")
@@ -138,6 +138,7 @@ class MainFrame(wx.Frame):
         # Bind sub_panels event
         radio_box.Bind(wx.EVT_RADIOBOX, self.onSelectGameMode)
         start_game_button.Bind(wx.EVT_BUTTON, self.onGameStart)
+        loop_exe_button.Bind(wx.EVT_BUTTON, self.onCompVsCompLoop)
 
     def setCellState(self, pos, ofst, state):
         self.cell_array[pos[0]+ofst[0]][pos[1]+ofst[1]].state = state
@@ -321,8 +322,8 @@ class MainFrame(wx.Frame):
         newpos = (pos[0]+move[0], pos[1]+move[1])
         return newpos
 
-    def showCannotPutDlg(self):
-        wx.MessageBox("Cannot put. Pass this turn.", "Warn", wx.OK)
+    def showWarnDlg(self, message):
+        wx.MessageBox(message, "Warn", wx.OK)
 
     ## Events
     # Man
@@ -346,7 +347,7 @@ class MainFrame(wx.Frame):
                 self.now_color = "black"
             
         elif ret == 1:
-            self.showCannotPutDlg()
+            self.showWarnDlg("Cannot put. Pass this turn.")
             self.log_textctrl.AppendText("Pass the " + self.now_color + " stone player.\n")
             
             if self.now_color == "black":
@@ -385,6 +386,9 @@ class MainFrame(wx.Frame):
 
         self.Refresh()
 
+    def onRightClick(self, event):
+        pass
+
     def onSelectGameMode(self, event):
         obj = event.GetEventObject()
         if self.radio_box.GetSelection() == 0:
@@ -407,6 +411,51 @@ class MainFrame(wx.Frame):
         if self.first_player == "computer":
             self.doComputer("black")
 
+    def onCompVsCompLoop(self, event):
+        loop_max = self.auto_loop_textctrl.GetValue()
+        if loop_max == "":
+            self.showWarnDlg("Set loop count.")
+            return
+        
+        if self.radio_box.GetSelection() != 3:
+            self.showWarnDlg("Select \"Computer vs Computer\".")
+            return
+
+        loop_max = int(loop_max)
+        print loop_max
+        comp_a_win_num = 0
+        comp_b_win_num = 0
+        draw_num = 0
+        self.comp_a_win_num_label.SetValue("0")
+        self.comp_b_win_num_label.SetValue("0")
+        self.draw_num_label.SetValue("0")
+        
+        for loop_cnt in range(0,loop_max):
+            self.setInitialState()
+            if self.comp_ai < 0:
+                black_computer = "A"
+            else:
+                black_computer = "B"
+
+            for i in range(0,4):
+                self.radio_box.EnableItem(i, False)
+            
+            self.doComputer("black")
+            
+            score_black = self.score_black_label.GetValue()
+            score_white = self.score_white_label.GetValue()
+            if int(score_black) == int(score_white):
+                draw_num += 1
+            elif (int(score_black) > int(score_white) and black_computer == "A") or \
+                 (int(score_black) < int(score_white) and black_computer == "B"):
+                comp_a_win_num += 1
+            else:
+                comp_b_win_num += 1
+
+        self.comp_a_win_num_label.SetValue(str(comp_a_win_num))
+        self.comp_b_win_num_label.SetValue(str(comp_b_win_num))
+        self.draw_num_label.SetValue(str(draw_num))
+        
     def setInitialState(self):
         for i in range(0,8):
             for j in range(0,8):
@@ -429,6 +478,7 @@ class MainFrame(wx.Frame):
 
     def gameEnd(self):
         self.log_textctrl.AppendText("Game is end.\n")
+        self.log_textctrl.AppendText("")
         for i in range(0,4):
             self.radio_box.EnableItem(i, True)
 
