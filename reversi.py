@@ -15,7 +15,7 @@
 import wx
 import random
 
-gVersion = "1.0.0"
+gVersion = "1.0.0_alpha-beta"
 gVec = [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)]
 
 class MainFrame(wx.Frame):
@@ -26,10 +26,32 @@ class MainFrame(wx.Frame):
         self.main_panel = main_panel
         sub_panel_top = SubPanel(self, pos=(648,0), size=(400,445))
         self.sub_panel_top = sub_panel_top
-        sub_panel_btm_left = SubPanel(self, pos=(648,450), size=(200,200))
-        self.sub_panel_btm_left = sub_panel_btm_left
-        sub_panel_btm_right = SubPanel(self, pos=(848,450), size=(200,200))
-        self.sub_panel_btm_right = sub_panel_btm_right
+        sub_panel_btm_left1 = SubPanel(self, pos=(648,450), size=(200,120))
+        self.sub_panel_btm_left1 = sub_panel_btm_left1
+        sub_panel_btm_left2 = SubPanel(self, pos=(648,570), size=(200,80))
+        self.sub_panel_btm_left2 = sub_panel_btm_left2
+        sub_panel_btm_right01 = SubPanel(self, pos=(848,450), size=(200,40))
+        self.sub_panel_btm_right01 = sub_panel_btm_right01
+        sub_panel_btm_right02 = SubPanel(self, pos=(848,490), size=(95,50))
+        self.sub_panel_btm_right02 = sub_panel_btm_right02
+        sub_panel_btm_right03 = SubPanel(self, pos=(948,490), size=(95,50))
+        self.sub_panel_btm_right03 = sub_panel_btm_right03
+        sub_panel_btm_right04 = SubPanel(self, pos=(848,550), size=(60,30))
+        self.sub_panel_btm_right04 = sub_panel_btm_right04
+        sub_panel_btm_right05 = SubPanel(self, pos=(908,550), size=(140,30))
+        self.sub_panel_btm_right05 = sub_panel_btm_right05
+        sub_panel_btm_right06 = SubPanel(self, pos=(848,585), size=(60,30))
+        self.sub_panel_btm_right06 = sub_panel_btm_right06
+        sub_panel_btm_right07 = SubPanel(self, pos=(908,585), size=(60,30))
+        self.sub_panel_btm_right07 = sub_panel_btm_right07
+        sub_panel_btm_right08 = SubPanel(self, pos=(968,585), size=(60,30))
+        self.sub_panel_btm_right08 = sub_panel_btm_right08
+        sub_panel_btm_right09 = SubPanel(self, pos=(848,615), size=(60,35))
+        self.sub_panel_btm_right09 = sub_panel_btm_right09
+        sub_panel_btm_right10 = SubPanel(self, pos=(908,615), size=(60,35))
+        self.sub_panel_btm_right10 = sub_panel_btm_right10
+        sub_panel_btm_right11 = SubPanel(self, pos=(968,615), size=(60,35))
+        self.sub_panel_btm_right11 = sub_panel_btm_right11
 
         # Cells arrangement in main_panel
         cell_array = [[0 for i in range(8)] for j in range(8)]
@@ -52,13 +74,13 @@ class MainFrame(wx.Frame):
         log_textctrl = wx.TextCtrl(sub_panel_top, wx.ID_ANY, size=(400,500), style=wx.TE_MULTILINE)
         self.log_textctrl = log_textctrl
         radio_button_array = ("Man vs Man", "Man vs Computer", "Computer vs Man", "Computer vs Computer")
-        radio_box = wx.RadioBox(sub_panel_btm_left, wx.ID_ANY, "Game mode", choices=radio_button_array, style=wx.RA_VERTICAL)
+        radio_box = wx.RadioBox(sub_panel_btm_left1, wx.ID_ANY, "Game mode", choices=radio_button_array, style=wx.RA_VERTICAL)
         self.radio_box = radio_box
-        start_game_button = wx.Button(sub_panel_btm_left, wx.ID_ANY, "START", size=(200,200))
+        start_game_button = wx.Button(sub_panel_btm_left2, wx.ID_ANY, "START", size=(200,80))
         label_font = wx.Font(20, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
-        score_label = wx.StaticText(sub_panel_btm_right, wx.ID_ANY, "SCORE", style=wx.TE_CENTER)
-        score_black_label = wx.TextCtrl(sub_panel_btm_right, wx.ID_ANY, "", style=wx.TE_CENTER)
-        score_white_label = wx.TextCtrl(sub_panel_btm_right, wx.ID_ANY, "", style=wx.TE_CENTER)
+        score_label = wx.StaticText(sub_panel_btm_right01, wx.ID_ANY, "SCORE", style=wx.TE_CENTER)
+        score_black_label = wx.TextCtrl(sub_panel_btm_right02, wx.ID_ANY, "", size=(90,45), style=wx.TE_CENTER)
+        score_white_label = wx.TextCtrl(sub_panel_btm_right03, wx.ID_ANY, "", size=(90,45), style=wx.TE_CENTER)
         self.score_black_label = score_black_label
         self.score_white_label = score_white_label
         score_label.SetFont(label_font)
@@ -67,20 +89,25 @@ class MainFrame(wx.Frame):
         score_white_label.SetFont(label_font)
         score_white_label.SetForegroundColour("white")
         score_white_label.SetBackgroundColour("#999999")
-
-        sub_top_layout = wx.BoxSizer(wx.VERTICAL)
-        sub_top_layout.Add(log_textctrl)
-        sub_btm_left_layout = wx.BoxSizer(wx.VERTICAL)
-        sub_btm_left_layout.Add(radio_box, flag=wx.GROW)
-        sub_btm_left_layout.Add(start_game_button)
-        sub_btm_right_layout = wx.BoxSizer(wx.VERTICAL)
-        sub_btm_right_layout.Add(score_label)
-        sub_btm_right_layout.Add(score_black_label)
-        sub_btm_right_layout.Add(score_white_label)
-
-        sub_panel_top.SetSizer(sub_top_layout)
-        sub_panel_btm_left.SetSizer(sub_btm_left_layout)
-        sub_panel_btm_right.SetSizer(sub_btm_right_layout)
+        auto_loop_textctrl = wx.TextCtrl(sub_panel_btm_right04, wx.ID_ANY, size=(60,30))
+        self.auto_loop_textctrl = auto_loop_textctrl
+        loop_exe_button = wx.Button(sub_panel_btm_right05, wx.ID_ANY, "Comp vs Comp Loop", size=(135,30))
+        self.loop_exe_button = loop_exe_button
+        comp_a_win_label = wx.TextCtrl(sub_panel_btm_right06, wx.ID_ANY, "COMP-A", pos=(0,5), size=(60,20), style=wx.TE_CENTER)
+        comp_b_win_label = wx.TextCtrl(sub_panel_btm_right07, wx.ID_ANY,  "COMP-B", pos=(0,5), size=(60,20), style=wx.TE_CENTER)
+        draw_label = wx.TextCtrl(sub_panel_btm_right08, wx.ID_ANY, "DRAW", pos=(0,5), size=(60,20), style=wx.TE_CENTER)
+        comp_a_win_label.SetBackgroundColour("#999999")
+        comp_b_win_label.SetBackgroundColour("#999999")
+        draw_label.SetBackgroundColour("#999999")
+        comp_a_win_num_label = wx.TextCtrl(sub_panel_btm_right09, wx.ID_ANY, "", pos=(0,5), size=(60,20), style=wx.TE_CENTER)
+        comp_b_win_num_label = wx.TextCtrl(sub_panel_btm_right10, wx.ID_ANY,  "", pos=(0,5), size=(60,20), style=wx.TE_CENTER)
+        draw_num_label = wx.TextCtrl(sub_panel_btm_right11, wx.ID_ANY, "", pos=(0,5), size=(60,20), style=wx.TE_CENTER)
+        self.comp_a_win_num_label = comp_a_win_num_label
+        self.comp_b_win_num_label = comp_b_win_num_label
+        self.dwaw_num_label = draw_num_label
+        comp_a_win_num_label.SetBackgroundColour("#999999")
+        comp_b_win_num_label.SetBackgroundColour("#999999")
+        draw_num_label.SetBackgroundColour("#999999")
 
         # Game mode 
         first_player  = "man"
