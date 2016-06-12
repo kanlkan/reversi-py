@@ -17,6 +17,7 @@ import random
 
 gVersion = "1.0.0_alpha-beta"
 gVec = [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)]
+gMaxDepth = 10
 
 class MainFrame(wx.Frame):
     def __init__(self):
@@ -120,14 +121,19 @@ class MainFrame(wx.Frame):
         self.pass_flag = pass_flag
         player_score = [2 ,2]
         self.player_score = player_score
-        rest = 64 - (player_score[0] + player_score[1])
-        self.rest = rest
         now_color = "black"    # first palyer color is black
         self.now_color = now_color
         comp_ai = 0 
         self.comp_ai = comp_ai
-        
+
         self.setInitialState()
+        black_pos_list = [(3,3),(4,4)]
+        white_pos_list = [(3,4),(4,3)]
+
+        state_storage_list = []
+        self.state_storage_list = state_storage_list
+        for i in range(0, gMaxDepth):
+            state_storage_list.append(StateStorage(self.pass_flag, self.player_score, self.now_color, self.comp_ai, black_pos_list, white_pos_list))
         
         # Bind main_panel event
         for i in range(0, 8):
@@ -159,14 +165,14 @@ class MainFrame(wx.Frame):
         self.Refresh
 
     # computer's turn
-    def doComputer(self, my_color):
+    def doComputer(self, go_next_computer):
         pos_list = []
         gain_list = []
         self.comp_ai *= -1
-        pos_list, gain_list = self.scanPuttableCell(my_color)
+        pos_list, gain_list = self.scanPuttableCell()
         if len(pos_list) == 0:
-            self.log_textctrl.AppendText("Pass the " + my_color + " stone computer's turn.\n")
-            if my_color == "black":
+            self.log_textctrl.AppendText("Pass the " + self.now_color + " stone computer's turn.\n")
+            if self.now_color == "black":
                 self.pass_flag[0] = 1
                 self.now_color = "white"
             else:
@@ -177,36 +183,43 @@ class MainFrame(wx.Frame):
                 self.gameEnd()
                 return
             elif self.first_player == "computer" and self.second_player == "computer":
-                self.doComputer(self.now_color)
+                self.doComputer(go_next_computer)
                 return
             else:
                 return
 
-        if my_color == "black":
+        if self.now_color == "black":
             self.pass_flag[0] = 0
         else:
             self.pass_flag[1] = 0
  
         put_pos = self.decideComputerNext(pos_list, gain_list)
-        
-        ret = self.putStone(put_pos, my_color)
+        self.putComputerStone(put_pos, go_next_computer)
+
+    def putComputerStone(self, put_pos, go_next_computer):
+        ret = self.putStone(put_pos)
         if ret == 0:
-            if my_color == "black":
+            self.vecScan(put_pos, True)
+            
+            if self.now_color == "black":
                 self.pass_flag[0] = 0
                 self.now_color = "white"
             else:
                 self.pass_flag[1] = 0
                 self.now_color = "black"
-            self.vecScan(put_pos, my_color, 1)
-            if self.rest == 0:
-                self.gameEnd()
-                return
+            
+            if self.player_score[0] + self.player_score[1] == 64:
+                if go_next_computer == True:
+                    self.gameEnd()
+                return 1
 
-            if self.first_player == "computer" and self.second_player == "computer":
-                self.doComputer(self.now_color)
-                return
+            if self.first_player == "computer" and self.second_player == "computer" and go_next_computer == True:
+                self.doComputer(go_next_computer)
+                
+            return 0
         else:
             print ("error! illegal path.")
+            return 2
 
     def decideComputerNext(self, pos_list, gain_list):
         print ("pos_list :" + str(pos_list))
@@ -214,7 +227,8 @@ class MainFrame(wx.Frame):
         
         # Insert a computer's AI here
         if self.comp_ai >= 0:    # comp_ai == 0 => vs Man mode
-            next_pos = self.computerAi_Random(pos_list, gain_list)
+            #next_pos = self.computerAi_Random(pos_list, gain_list)
+            next_pos = self.computerAi_minMax_3(pos_list, gain_list)
             #self.log_textctrl.AppendText("debug : computer AI = A turn.\n")
         else:
             next_pos = self.computerAi_1stGainMax(pos_list, gain_list)
@@ -239,8 +253,131 @@ class MainFrame(wx.Frame):
         
         return pos_list[index_list[tgt]]
 
-    def putStone(self, put_pos, my_color):
-        pos_list, gain_list = self.scanPuttableCell(my_color)
+    def computerAi_minMax_3(self, pos_list, gain_list):
+        self.backUpAllState(self.state_storage_list[0])
+        value = []
+        value = self.minMaxPlane(3, pos_list, gain_list)
+        self.restoreAllState(self.state_storage_list[0])
+        self.updateScoreLabel()
+        update_pos_list = []
+        for i, pos in enumerate(pos_list):
+            if max(value) == value[i]:
+                update_pos_list.append(pos)
+
+        tgt = random.randint(0, len(update_pos_list)-1)
+        return update_pos_list[tgt]
+
+    def minMaxPlane(self, depth, pos_list, gain_list):
+        value = []
+        next_value = []
+        next2_value = []
+        next_pos_list = []
+        next_gain_list = []
+        next2_pos_list = []
+        next2_gain_list = []
+        for pos in pos_list:
+            print "now_color = " + self.now_color
+            print "pos = " + str(pos)
+            ret =  self.putComputerStone(pos, False)
+            print "ret_1 = " + str(ret)
+            next_pos_list, next_gain_list = self.scanPuttableCell()
+            print "next_pos_list" + str(next_pos_list)
+            print "next_gain_list" + str(next_gain_list)
+            self.backUpAllState(self.state_storage_list[1])
+            print "backUP1"
+            for next_pos in next_pos_list:
+                print "now_color = " + self.now_color
+                print "next_pos = " + str(next_pos)
+                ret = self.putComputerStone(next_pos, False)
+                print "ret_2 = " + str(ret)
+                next2_pos_list, next2_gain_list = self.scanPuttableCell()
+                print "next2_pos_list" + str(next2_pos_list)
+                print "next2_gain_list" + str(next2_gain_list)
+                next2_value.append(max(next2_gain_list))
+                print "restore1"
+                self.restoreAllState(self.state_storage_list[1])
+
+            print "next2_value = " + str(next2_value)
+            value.append(min(next2_value))
+            next2_value = []
+            self.restoreAllState(self.state_storage_list[0])
+
+        print "value = " + str(value)
+        return value
+
+    def minMax(self, depth, pos_list, gain_list):
+        value = []
+        next_value = []
+        next2_value = []
+        next_pos_list = []
+        next_gain_list = []
+        next2_pos_list = []
+        next2_gain_list = []
+        for pos in pos_list:
+            print "now_color = " + self.now_color
+            print "pos = " + str(pos)
+            ret =  self.putComputerStone(pos, False)
+            print "ret_1 = " + str(ret)
+            next_pos_list, next_gain_list = self.scanPuttableCell()
+            print "next_pos_list" + str(next_pos_list)
+            print "next_gain_list" + str(next_gain_list)
+            self.backUpAllState(self.state_storage_list[1])
+            print "backUP1"
+            for next_pos in next_pos_list:
+                print "now_color = " + self.now_color
+                print "next_pos = " + str(next_pos)
+                ret = self.putComputerStone(next_pos, False)
+                print "ret_2 = " + str(ret)
+                next2_pos_list, next2_gain_list = self.scanPuttableCell()
+                print "next2_pos_list" + str(next2_pos_list)
+                print "next2_gain_list" + str(next2_gain_list)
+                next2_value.append(max(next2_gain_list))
+                print "restore1"
+                self.restoreAllState(self.state_storage_list[1])
+
+            print "next2_value = " + str(next2_value)
+            value.append(min(next2_value))
+            next2_value = []
+            self.restoreAllState(self.state_storage_list[0])
+
+        print "value = " + str(value)
+        return value
+
+
+    def backUpAllState(self, storage):
+        storage.black_pos_list = []
+        storage.white_pos_list = []
+        storage.pass_flag    = self.pass_flag
+        storage.player_score = self.player_score
+        storage.now_color    = self.now_color
+        storage.comp_ai      = self.comp_ai
+        for i in range(0,8):
+            for j in range(0,8):
+                if self.cell_array[i][j].state == "black":
+                    storage.black_pos_list.append((i,j))
+                elif self.cell_array[i][j].state == "white":
+                    storage.white_pos_list.append((i,j))
+
+    def restoreAllState(self, storage):
+        self.pass_flag    = storage.pass_flag
+        self.player_score = storage.player_score
+        self.now_color    = storage.now_color
+        self.comp_ai      = storage.comp_ai
+        self.updateScoreLabel()
+        
+        for i in range(0,8):
+            for j in range(0,8):
+                self.setCellState((i,j), (0,0), "green")
+        
+        print "b_pos_list = " + str(storage.black_pos_list)
+        print "w_pos_list = " + str(storage.white_pos_list)
+        for pos in storage.black_pos_list:
+            self.setCellState(pos, (0,0), "black")
+        for pos in storage.white_pos_list:
+            self.setCellState(pos, (0,0), "white")
+
+    def putStone(self, put_pos):
+        pos_list, gain_list = self.scanPuttableCell()
         hit = 0
         for pos in pos_list:
             if pos == put_pos:
@@ -253,21 +390,20 @@ class MainFrame(wx.Frame):
             return 2    # cannot put a stone at put_pos.
 
         # put a stone at put_pos
-        self.setCellState(put_pos, (0,0), my_color)
-        self.rest -= 1
-        if my_color == "black":
+        self.setCellState(put_pos, (0,0), self.now_color)
+        if self.now_color == "black":
             self.player_score[0] += 1
         else:
             self.player_score[1] += 1
         self.updateScoreLabel()
         return 0
 
-    def scanPuttableCell(self, my_color):
+    def scanPuttableCell(self):
         pos_list = []
         gain_list = []
         for i in range(0, 8):
             for j in range(0, 8):
-                ret = self.vecScan((i,j), my_color, 0)
+                ret = self.vecScan((i,j), False)
                 
                 # ret => (is_hit, gain)
                 if ret[0] == 1:
@@ -276,7 +412,7 @@ class MainFrame(wx.Frame):
         
         return pos_list, gain_list
 
-    def vecScan(self, pos, my_color, reverse_on):
+    def vecScan(self, pos, reverse_on):
         rev_list = []
         temp_list = []
         gain = 0
@@ -284,7 +420,7 @@ class MainFrame(wx.Frame):
         if reverse_on == 0 and self.getCellState(pos,(0,0)) != "green":
             return 0, gain
 
-        if my_color == "black":
+        if self.now_color == "black":
             rev_color = "white"
         else:
             rev_color = "black"
@@ -294,7 +430,7 @@ class MainFrame(wx.Frame):
             for i in range(1, 8):
                 if self.getCellState(pos,(v[0]*i,v[1]*i)) == rev_color:
                     temp_list.append(self.movePos(pos,(v[0]*i, v[1]*i)))
-                    if self.getCellState(pos,(v[0]*i+v[0], v[1]*i+v[1])) == my_color:
+                    if self.getCellState(pos,(v[0]*i+v[0], v[1]*i+v[1])) == self.now_color:
                         is_hit = 1
                         for j in temp_list:
                             rev_list.append(j)
@@ -302,11 +438,11 @@ class MainFrame(wx.Frame):
                 else:
                     break
         
-        if reverse_on == 1:
-            self.log_textctrl.AppendText("put:" + str(pos) + ", "  + str(rev_list) + " to " + str(my_color) + "\n")
+        if reverse_on == True:
+            self.log_textctrl.AppendText("put:" + str(pos) + ", "  + str(rev_list) + " to " + str(self.now_color) + "\n")
             for rev_pos in rev_list:
-                self.setCellState(rev_pos, (0,0), my_color)
-                if my_color == "black":
+                self.setCellState(rev_pos, (0,0), self.now_color)
+                if self.now_color == "black":
                     self.player_score[0] += 1
                     self.player_score[1] -= 1
                 else:
@@ -336,16 +472,15 @@ class MainFrame(wx.Frame):
         print (self.getCellState(pos,(-1,1))+" "+self.getCellState(pos,(0,1))+" "+ self.getCellState(pos,(1,1)))
         print ("")
 
-        ret = self.putStone(pos, self.now_color)
+        ret = self.putStone(pos)
         if ret == 0:
-            self.vecScan(pos, self.now_color, 1)
+            self.vecScan(pos, True)
             if self.now_color == "black":
                 self.pass_flag[0] = 0
                 self.now_color = "white"
             else:
                 self.pass_flag[1] = 0
                 self.now_color = "black"
-            
         elif ret == 1:
             self.showWarnDlg("Cannot put. Pass this turn.")
             self.log_textctrl.AppendText("Pass the " + self.now_color + " stone player.\n")
@@ -363,12 +498,12 @@ class MainFrame(wx.Frame):
         else:
             return
 
-        if self.rest == 0:
+        if self.player_score[0] + self.player_score[1] == 64:
             self.gameEnd()
             return
         
         if self.first_player == "computer" or self.second_player == "computer":
-            self.doComputer(self.now_color)
+            self.doComputer(True)
 
     # for debug - toggle cell state manually
     def onMiddleClick(self, event):
@@ -409,7 +544,7 @@ class MainFrame(wx.Frame):
         for i in range(0,4):
             self.radio_box.EnableItem(i, False)
         if self.first_player == "computer":
-            self.doComputer("black")
+            self.doComputer(True)
 
     def onCompVsCompLoop(self, event):
         loop_max = self.auto_loop_textctrl.GetValue()
@@ -440,7 +575,7 @@ class MainFrame(wx.Frame):
             for i in range(0,4):
                 self.radio_box.EnableItem(i, False)
             
-            self.doComputer("black")
+            self.doComputer(True)
             
             score_black = self.score_black_label.GetValue()
             score_white = self.score_white_label.GetValue()
@@ -467,7 +602,6 @@ class MainFrame(wx.Frame):
         self.setCellState((4,4), (0,0), "black")
         self.pass_flag = [0, 0]
         self.player_score = [2, 2]
-        self.rest = 64 - (self.player_score[0] + self.player_score[1])
         self.updateScoreLabel()
         self.now_color = "black"
         self.log_textctrl.Clear()
@@ -481,6 +615,16 @@ class MainFrame(wx.Frame):
         self.log_textctrl.AppendText("")
         for i in range(0,4):
             self.radio_box.EnableItem(i, True)
+
+class StateStorage():
+    def __init__(self, pass_flag, player_score, now_color, comp_ai, black_pos_list, white_pos_list):
+        self.pass_flag = pass_flag
+        self.player_score = player_score
+        self.now_color = now_color
+        self.black_pos_list = black_pos_list
+        self.white_pos_list = white_pos_list
+        self.comp_ai = comp_ai
+
 
 class SubPanel(wx.Panel):
     def __init__(self, parent, pos, size):
