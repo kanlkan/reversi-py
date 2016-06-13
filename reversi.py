@@ -129,12 +129,13 @@ class MainFrame(wx.Frame):
         self.setInitialState()
         black_pos_list = [(3,3),(4,4)]
         white_pos_list = [(3,4),(4,3)]
-
+        log_on = True
+        self.log_on = log_on
         state_storage_list = []
         self.state_storage_list = state_storage_list
         for i in range(0, gMaxDepth):
             state_storage_list.append(StateStorage(self.pass_flag, self.player_score, self.now_color, self.comp_ai, black_pos_list, white_pos_list))
-        
+
         # Bind main_panel event
         for i in range(0, 8):
             for j in range(0, 8):
@@ -222,23 +223,22 @@ class MainFrame(wx.Frame):
             return 2
 
     def decideComputerNext(self, pos_list, gain_list):
-        print ("pos_list :" + str(pos_list))
-        print ("gain_list:" + str(gain_list))
-        
+        #print ("pos_list :" + str(pos_list))
+        #print ("gain_list:" + str(gain_list))
+        print "thinking ..."
         # Insert a computer's AI here
         if self.comp_ai >= 0:    # comp_ai == 0 => vs Man mode
             #next_pos = self.computerAi_Random(pos_list, gain_list)
-            next_pos = self.computerAi_minMax_3(pos_list, gain_list)
-            #self.log_textctrl.AppendText("debug : computer AI = A turn.\n")
+            next_pos = self.computerAi_MinMax_3(pos_list, gain_list)
+            self.log_textctrl.AppendText("debug : computer AI = A turn.\n")
         else:
             next_pos = self.computerAi_1stGainMax(pos_list, gain_list)
-            #self.log_textctrl.AppendText("debug : computer AI = B turn.\n")
-
+            self.log_textctrl.AppendText("debug : computer AI = B turn.\n")
+        print "thinking finised."
         return next_pos
 
     def computerAi_Random(self, pos_list, gain_list):
-        length = len(pos_list)
-        index = random.randint(0, length-1)
+        index = random.randint(0, len(pos_list)-1)
         return pos_list[index]
 
     def computerAi_1stGainMax(self, pos_list, gain_list):
@@ -248,109 +248,61 @@ class MainFrame(wx.Frame):
             if max_gain == val:
                 index_list.append(i)
 
-        length = len(index_list)
-        tgt = random.randint(0, length-1)
-        
+        tgt = random.randint(0, len(index_list)-1)
         return pos_list[index_list[tgt]]
 
-    def computerAi_minMax_3(self, pos_list, gain_list):
-        self.backUpAllState(self.state_storage_list[0])
+    def computerAi_MinMax_3(self, pos_list, gain_list):
         value = []
-        value = self.minMaxPlane(3, pos_list, gain_list)
-        self.restoreAllState(self.state_storage_list[0])
-        self.updateScoreLabel()
         update_pos_list = []
+        
+        self.log_on = False 
+        value = self.minMax(2, 2, pos_list, gain_list)
         for i, pos in enumerate(pos_list):
             if max(value) == value[i]:
                 update_pos_list.append(pos)
 
+        self.log_on = True
         tgt = random.randint(0, len(update_pos_list)-1)
         return update_pos_list[tgt]
 
-    def minMaxPlane(self, depth, pos_list, gain_list):
+    def minMax(self, depth, max_depth, pos_list, gain_list):  # depth > 0
         value = []
         next_value = []
-        next2_value = []
         next_pos_list = []
         next_gain_list = []
-        next2_pos_list = []
-        next2_gain_list = []
+        self.backUpAllState(self.state_storage_list[depth])
         for pos in pos_list:
-            print "now_color = " + self.now_color
-            print "pos = " + str(pos)
             ret =  self.putComputerStone(pos, False)
-            print "ret_1 = " + str(ret)
             next_pos_list, next_gain_list = self.scanPuttableCell()
-            print "next_pos_list" + str(next_pos_list)
-            print "next_gain_list" + str(next_gain_list)
-            self.backUpAllState(self.state_storage_list[1])
-            print "backUP1"
-            for next_pos in next_pos_list:
-                print "now_color = " + self.now_color
-                print "next_pos = " + str(next_pos)
-                ret = self.putComputerStone(next_pos, False)
-                print "ret_2 = " + str(ret)
-                next2_pos_list, next2_gain_list = self.scanPuttableCell()
-                print "next2_pos_list" + str(next2_pos_list)
-                print "next2_gain_list" + str(next2_gain_list)
-                next2_value.append(max(next2_gain_list))
-                print "restore1"
-                self.restoreAllState(self.state_storage_list[1])
+            #print str(depth) + str(", ") + str(next_gain_list)
+            if (depth > 1):
+                next_value = self.minMax(depth-1, max_depth, next_pos_list, next_gain_list)
+                if len(next_value) == 0:
+                    value.append(0)
+                elif (max_depth - depth) % 2 == 0:
+                    value.append(min(next_value))
+                else:
+                    value.append(max(next_value))
+            else:
+                if len(next_gain_list) == 0:
+                    value.append(0)
+                elif (max_depth - depth) % 2 == 0:
+                    value.append(min(next_gain_list))
+                else:
+                    value.append(max(next_gain_list))
 
-            print "next2_value = " + str(next2_value)
-            value.append(min(next2_value))
-            next2_value = []
-            self.restoreAllState(self.state_storage_list[0])
+            self.restoreAllState(self.state_storage_list[depth])
 
-        print "value = " + str(value)
+        #print "depth, value = " + str(depth) + ", " + str(value)
         return value
-
-    def minMax(self, depth, pos_list, gain_list):
-        value = []
-        next_value = []
-        next2_value = []
-        next_pos_list = []
-        next_gain_list = []
-        next2_pos_list = []
-        next2_gain_list = []
-        for pos in pos_list:
-            print "now_color = " + self.now_color
-            print "pos = " + str(pos)
-            ret =  self.putComputerStone(pos, False)
-            print "ret_1 = " + str(ret)
-            next_pos_list, next_gain_list = self.scanPuttableCell()
-            print "next_pos_list" + str(next_pos_list)
-            print "next_gain_list" + str(next_gain_list)
-            self.backUpAllState(self.state_storage_list[1])
-            print "backUP1"
-            for next_pos in next_pos_list:
-                print "now_color = " + self.now_color
-                print "next_pos = " + str(next_pos)
-                ret = self.putComputerStone(next_pos, False)
-                print "ret_2 = " + str(ret)
-                next2_pos_list, next2_gain_list = self.scanPuttableCell()
-                print "next2_pos_list" + str(next2_pos_list)
-                print "next2_gain_list" + str(next2_gain_list)
-                next2_value.append(max(next2_gain_list))
-                print "restore1"
-                self.restoreAllState(self.state_storage_list[1])
-
-            print "next2_value = " + str(next2_value)
-            value.append(min(next2_value))
-            next2_value = []
-            self.restoreAllState(self.state_storage_list[0])
-
-        print "value = " + str(value)
-        return value
-
 
     def backUpAllState(self, storage):
         storage.black_pos_list = []
         storage.white_pos_list = []
-        storage.pass_flag    = self.pass_flag
-        storage.player_score = self.player_score
+        storage.pass_flag    = [self.pass_flag[0], self.pass_flag[1]]
+        storage.player_score = [self.player_score[0], self.player_score[1]]
         storage.now_color    = self.now_color
-        storage.comp_ai      = self.comp_ai
+        storage.comp_ai      = self.comp_ai * 1
         for i in range(0,8):
             for j in range(0,8):
                 if self.cell_array[i][j].state == "black":
@@ -359,18 +311,16 @@ class MainFrame(wx.Frame):
                     storage.white_pos_list.append((i,j))
 
     def restoreAllState(self, storage):
-        self.pass_flag    = storage.pass_flag
-        self.player_score = storage.player_score
+        self.pass_flag    = [storage.pass_flag[0], storage.pass_flag[1]]
+        self.player_score = [storage.player_score[0], storage.player_score[1]]
         self.now_color    = storage.now_color
-        self.comp_ai      = storage.comp_ai
+        self.comp_ai      = storage.comp_ai * 1
         self.updateScoreLabel()
         
         for i in range(0,8):
             for j in range(0,8):
                 self.setCellState((i,j), (0,0), "green")
         
-        print "b_pos_list = " + str(storage.black_pos_list)
-        print "w_pos_list = " + str(storage.white_pos_list)
         for pos in storage.black_pos_list:
             self.setCellState(pos, (0,0), "black")
         for pos in storage.white_pos_list:
@@ -439,7 +389,8 @@ class MainFrame(wx.Frame):
                     break
         
         if reverse_on == True:
-            self.log_textctrl.AppendText("put:" + str(pos) + ", "  + str(rev_list) + " to " + str(self.now_color) + "\n")
+            if self.log_on == True:
+                self.log_textctrl.AppendText("put:" + str(pos) + ", "  + str(rev_list) + " to " + str(self.now_color) + "\n")
             for rev_pos in rev_list:
                 self.setCellState(rev_pos, (0,0), self.now_color)
                 if self.now_color == "black":
@@ -466,6 +417,7 @@ class MainFrame(wx.Frame):
     def onLeftClick(self, event):
         obj = event.GetEventObject()
         pos= obj.pos_index
+        print ("")
         print ("pos  = " + str(pos))
         print (self.getCellState(pos,(-1,-1))+" "+self.getCellState(pos,(0,-1))+" "+ self.getCellState(pos,(1,-1)))
         print (self.getCellState(pos,(-1,0))+" "+self.getCellState(pos,(0,0))+" "+ self.getCellState(pos,(1,0)))
