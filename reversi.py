@@ -18,6 +18,23 @@ import random
 gVersion = "1.0.0_alpha-beta"
 gVec = [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)]
 gMaxDepth = 10
+gGain = [( 30, -12,  0, -1, -1,  0, -12,  30), \
+         (-12, -15, -3, -3, -3, -3, -15, -12), \
+         (  0,  -3,  0, -1, -1,  0,  -3,   0), \
+         ( -1,  -3, -1, -1, -1, -1,  -3,  -1), \
+         ( -1,  -3, -1, -1, -1, -1,  -3,  -1), \
+         (  0,  -3,  0, -1, -1,  0,  -3,   0), \
+         (-12, -15, -3, -3, -3, -3, -15, -12), \
+         ( 30, -12,  0, -1, -1,  0, -12,  30)]
+
+#gGain = [(120, -20, 20,  5,  5, 20, -20, 120), \
+#         (-20, -40, -5, -5, -5, -5, -40, -20), \
+#         ( 20,  -5, 15,  3,  3, 15,  -5,  20), \
+#         (  5,  -5,  3,  3,  3,  3,  -5,   5), \
+#         (  5,  -5,  3,  3,  3,  3,  -5,   5), \
+#         ( 20,  -5, 15,  3,  3, 15,  -5,  20), \
+#         (-20, -40, -5, -5, -5, -5, -40, -20), \
+#         (120, -20, 20,  5,  5, 20, -20, 120)]
 
 class MainFrame(wx.Frame):
     def __init__(self):
@@ -223,17 +240,18 @@ class MainFrame(wx.Frame):
             return 2
 
     def decideComputerNext(self, pos_list, gain_list):
-        #print ("pos_list :" + str(pos_list))
-        #print ("gain_list:" + str(gain_list))
+        print ("pos_list :" + str(pos_list))
+        print ("gain_list:" + str(gain_list))
         print "thinking ..."
         # Insert a computer's AI here
         if self.comp_ai >= 0:    # comp_ai == 0 => vs Man mode
             #next_pos = self.computerAi_Random(pos_list, gain_list)
+            #next_pos = self.computerAi_1stGainMax(pos_list, gain_list)
             next_pos = self.computerAi_MinMax_3(pos_list, gain_list)
-            self.log_textctrl.AppendText("debug : computer AI = A turn.\n")
+            self.log_textctrl.AppendText("debug : AI = A turn.\n")
         else:
             next_pos = self.computerAi_1stGainMax(pos_list, gain_list)
-            self.log_textctrl.AppendText("debug : computer AI = B turn.\n")
+            self.log_textctrl.AppendText("debug : AI = B turn.\n")
         print "thinking finised."
         return next_pos
 
@@ -401,9 +419,17 @@ class MainFrame(wx.Frame):
                     self.player_score[0] -= 1
                 self.updateScoreLabel()
         
-        gain = len(rev_list)
+        gain = self.calcGain(pos, rev_list)
         return is_hit, gain
 
+    def calcGain(self, pos, rev_list):
+        ret_gain = 0
+        ret_gain += gGain[pos[0]][pos[1]]
+
+        for rev_pos in rev_list:
+            ret_gain += gGain[rev_pos[0]][rev_pos[1]]
+
+        return ret_gain
 
     def movePos(self, pos, move):
         newpos = (pos[0]+move[0], pos[1]+move[1])
