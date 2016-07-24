@@ -574,10 +574,10 @@ class MainFrame(wx.Frame):
             for j in range(0,8):
                 self.setCellState((i,j), (0,0), "green")
 
-        self.setCellState((3,3), (0,0), "black")
-        self.setCellState((3,4), (0,0), "white")
-        self.setCellState((4,3), (0,0), "white")
-        self.setCellState((4,4), (0,0), "black")
+        self.setCellState((3,3), (0,0), "white")
+        self.setCellState((3,4), (0,0), "black")
+        self.setCellState((4,3), (0,0), "black")
+        self.setCellState((4,4), (0,0), "white")
         self.pass_flag = [0, 0]
         self.player_score = [2, 2]
         self.updateScoreLabel()
