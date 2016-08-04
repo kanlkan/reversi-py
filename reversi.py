@@ -14,6 +14,15 @@
 #
 import wx
 import random
+import sys
+import numpy as np
+import chainer
+from chainer import cuda, Function, gradient_check, report, training, utils, Variable
+from chainer import datasets, iterators, optimizers, serializers
+from chainer import Link, Chain, ChainList
+import chainer.functions as F
+import chainer.links as L
+from chainer.training import extensions
 
 gVersion = "1.1.0"
 gVec = [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)]
@@ -36,9 +45,38 @@ gGain = [( 30, -12,  0, -1, -1,  0, -12,  30), \
 #         (-20, -40, -5, -5, -5, -5, -40, -20), \
 #         (120, -20, 20,  5,  5, 20, -20, 120)]
 
+class MLP(Chain):
+    def __init__(self):
+        super(MLP, self).__init__(
+                l1=L.Linear(64, 100),
+                l2=L.Linear(100, 100),
+                l3=L.Linear(100, 65),
+        )
+
+    def __call__(self, x):
+        h1 = F.relu(self.l1(x))
+        h2 = F.relu(self.l2(h1))
+        y = self.l3(h2)
+        return y
+
+class Classifier(Chain):
+    def __init__(self, predictor):
+        super(Classifier, self).__init__(predictor=predictor)
+
+    def __call__(self, x, t):
+        y = self.predictor(x)
+        loss = F.softmax_cross_entropy(y, t)
+        accuracy = F.accuracy(y, t)
+        report({'loss': loss, 'accuracy': accuracy}, self)
+        return loss
+
+
+gMlpModelBlack = Classifier(MLP())
+gMlpModelWhite = Classifier(MLP())
+
 class MainFrame(wx.Frame):
     def __init__(self):
-        wx.Frame.__init__(self, None, wx.ID_ANY, 'Revresi :' + gVersion, size=(1050, 648+30))
+        wx.Frame.__init__(self, None, wx.ID_ANY, 'Revresi :' + gVersion, size=(1250, 648+30))
 
         main_panel = wx.Panel(self, wx.ID_ANY, pos=(0,0), size=(648,648))
         self.main_panel = main_panel
@@ -71,6 +109,28 @@ class MainFrame(wx.Frame):
         sub_panel_btm_right11 = SubPanel(self, pos=(968,615), size=(60,35))
         self.sub_panel_btm_right11 = sub_panel_btm_right11
 
+        sub2_panel01 = SubPanel(self, pos=(1050,0), size=(200,15))
+        self.sub2_panel01 = sub2_panel01
+        sub2_panel02 = SubPanel(self, pos=(1050,20), size=(200,15))
+        self.sub2_panel02 = sub2_panel02
+        sub2_panel03 = SubPanel(self, pos=(1050,40), size=(200,35))
+        self.sub2_panel03 = sub2_panel03
+        sub2_panel04 = SubPanel(self, pos=(1050,80), size=(200,15))
+        self.sub2_panel04 = sub2_panel04
+        sub2_panel05 = SubPanel(self, pos=(1050,100), size=(200,35))
+        self.sub2_panel05 = sub2_panel05
+        sub2_panel06 = SubPanel(self, pos=(1050,160), size=(200,15))
+        self.sub2_panel06 = sub2_panel06
+        sub2_panel07 = SubPanel(self, pos=(1050,180), size=(200,15))
+        self.sub2_panel07 = sub2_panel07
+        sub2_panel08 = SubPanel(self, pos=(1050,200), size=(200,35))
+        self.sub2_panel08 = sub2_panel08
+        sub2_panel09 = SubPanel(self, pos=(1050,240), size=(200,15))
+        self.sub2_panel09 = sub2_panel09
+        sub2_panel10 = SubPanel(self, pos=(1050,260), size=(200,35))
+        self.sub2_panel10 = sub2_panel10
+        
+        
         # Cells arrangement in main_panel
         cell_array = [[0 for i in range(8)] for j in range(8)]
         self.cell_array = cell_array
@@ -91,7 +151,7 @@ class MainFrame(wx.Frame):
         # Components in sub_panels
         log_textctrl = wx.TextCtrl(sub_panel_top, wx.ID_ANY, size=(400,450), style=wx.TE_MULTILINE)
         self.log_textctrl = log_textctrl
-        radio_button_array = ("Man vs Man", "Man vs Computer", "Computer vs Man", "Computer vs Computer")
+        radio_button_array = ("Man vs Man", "Man vs Computer A", "Computer A vs Man", "Computer A vs Computer B")
         radio_box = wx.RadioBox(sub_panel_btm_left1, wx.ID_ANY, "Game mode", choices=radio_button_array, style=wx.RA_VERTICAL)
         self.radio_box = radio_box
         start_game_button = wx.Button(sub_panel_btm_left2, wx.ID_ANY, "START", size=(200,80))
@@ -127,6 +187,30 @@ class MainFrame(wx.Frame):
         comp_b_win_num_label.SetBackgroundColour("#999999")
         draw_num_label.SetBackgroundColour("#999999")
 
+        # Components in sub2_panels
+        label_font = wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
+        mlp_model_label = wx.StaticText(sub2_panel01, wx.ID_ANY, "MLP model setting")
+        mlp_model_label.SetFont(label_font)
+        mlp_for_black_label = wx.StaticText(sub2_panel02, wx.ID_ANY, "for black")
+        mlp_for_black_label.SetFont(label_font)
+        mlp_for_black_text = wx.TextCtrl(sub2_panel03, wx.ID_ANY, "model_black_win.npz", size=(180,30))
+        self.mlp_for_black_text = mlp_for_black_text
+        mlp_for_white_label = wx.StaticText(sub2_panel04, wx.ID_ANY, "for white")
+        mlp_for_white_label.SetFont(label_font)
+        mlp_for_white_text = wx.TextCtrl(sub2_panel05, wx.ID_ANY, "model_white_win.npz", size=(180,30))
+        self.mlp_for_white_text = mlp_for_white_text
+        comp_ai_label = wx.StaticText(sub2_panel06, wx.ID_ANY, "Computer AI setting")
+        comp_ai_label.SetFont(label_font)
+        comp_ai_a_label = wx.StaticText(sub2_panel07, wx.ID_ANY, "Computer A")
+        comp_ai_a_label.SetFont(label_font)
+        comp_ai_elem = ("MLP", "1st Gain Max", "Min Max 3", "Random")
+        comp_ai_a_cb = wx.ComboBox(sub2_panel08, wx.ID_ANY, "MLP", choices=comp_ai_elem, style=wx.CB_READONLY)
+        self.comp_ai_a_cb = comp_ai_a_cb
+        comp_ai_b_label = wx.StaticText(sub2_panel09, wx.ID_ANY, "Computer B")
+        comp_ai_b_label.SetFont(label_font)
+        comp_ai_b_cb = wx.ComboBox(sub2_panel10, wx.ID_ANY, "MLP", choices=comp_ai_elem, style=wx.CB_READONLY)
+        self.comp_ai_b_cb = comp_ai_b_cb
+        
         # Game mode 
         first_player  = "man"
         second_player = "man"
@@ -188,7 +272,9 @@ class MainFrame(wx.Frame):
         gain_list = []
         self.comp_ai *= -1
         pos_list, gain_list = self.scanPuttableCell()
-        if len(pos_list) == 0:
+        put_pos = self.decideComputerNext(pos_list, gain_list)
+        print "put_pos = " + str(put_pos)
+        if len(put_pos) == 0:
             self.log_textctrl.AppendText("Pass the " + self.now_color + " stone computer's turn.\n")
             if self.now_color == "black":
                 self.pass_flag[0] = 1
@@ -211,7 +297,6 @@ class MainFrame(wx.Frame):
         else:
             self.pass_flag[1] = 0
  
-        put_pos = self.decideComputerNext(pos_list, gain_list)
         self.putComputerStone(put_pos, go_next_computer)
 
     def putComputerStone(self, put_pos, go_next_computer):
@@ -245,21 +330,44 @@ class MainFrame(wx.Frame):
         print "thinking ..."
         # Insert a computer's AI here
         if self.comp_ai >= 0:    # comp_ai == 0 => vs Man mode
-            #next_pos = self.computerAi_Random(pos_list, gain_list)
-            #next_pos = self.computerAi_1stGainMax(pos_list, gain_list)
-            next_pos = self.computerAi_MinMax_3(pos_list, gain_list)
+            comp_ai_a_str = self.comp_ai_a_cb.GetValue()
+            if comp_ai_a_str == "MLP":
+                next_pos = self.computerAi_Mlp(pos_list, gain_list)
+            elif comp_ai_a_str == "1st Gain Max":
+                next_pos = self.computerAi_1stGainMax(pos_list, gain_list)
+            elif comp_ai_a_str == "Min Max 3":
+                next_pos = self.computerAi_MinMax_3(pos_list, gain_list)
+            elif comp_ai_a_str == "Random":
+                next_pos = self.computerAi_Random(pos_list, gain_list)
+            
             self.log_textctrl.AppendText("debug : AI = A turn.\n")
         else:
-            next_pos = self.computerAi_1stGainMax(pos_list, gain_list)
+            comp_ai_b_str = self.comp_ai_b_cb.GetValue()
+            if comp_ai_b_str == "MLP":
+                next_pos = self.computerAi_Mlp(pos_list, gain_list)
+            elif comp_ai_b_str == "1st Gain Max":
+                next_pos = self.computerAi_1stGainMax(pos_list, gain_list)
+            elif comp_ai_b_str == "Min Max 3":
+                next_pos = self.computerAi_MinMax_3(pos_list, gain_list)
+            elif comp_ai_b_str == "Random":
+                next_pos = self.computerAi_Random(pos_list, gain_list)
+ 
             self.log_textctrl.AppendText("debug : AI = B turn.\n")
+        
         print "thinking finised."
         return next_pos
 
     def computerAi_Random(self, pos_list, gain_list):
+        if len(pos_list) == 0:
+            return []
+
         index = random.randint(0, len(pos_list)-1)
         return pos_list[index]
 
     def computerAi_1stGainMax(self, pos_list, gain_list):
+        if len(pos_list) == 0:
+            return []
+
         index_list = []
         max_gain = max(gain_list)
         for i, val in enumerate(gain_list):
@@ -270,6 +378,9 @@ class MainFrame(wx.Frame):
         return pos_list[index_list[tgt]]
 
     def computerAi_MinMax_3(self, pos_list, gain_list):
+        if len(pos_list) == 0:
+            return []
+
         value = []
         update_pos_list = []
         
@@ -314,6 +425,56 @@ class MainFrame(wx.Frame):
         #print "depth, value = " + str(depth) + ", " + str(value)
         return value
 
+    def computerAi_Mlp(self, pos_list, gain_list):
+        # make input(board state)
+        board = []
+        row = []
+        for i in range(0,8):
+            for j in range(0,8):
+                if self.getCellState([j,i], (0,0)) == "green":
+                    row.append(0)
+                elif self.getCellState([j,i], (0,0)) == "black":
+                    row.append(1)
+                elif self.getCellState([j,i], (0,0)) == "white":
+                    row.append(2)
+
+            board.append(row)
+            row = []
+
+        X = np.array([board], dtype=np.float32)
+
+        # get output
+        if self.now_color == "black":
+            y = F.softmax(gMlpModelBlack.predictor(X))
+        else:
+            y = F.softmax(gMlpModelWhite.predictor(X))
+        
+        put_pos_flat = y.data.argmax(1)
+        print "put_pos_flat = " + str(put_pos_flat)
+
+        # convert pos index
+        if put_pos_flat[0] == 64:  # pass
+            put_pos = []
+        else:
+            put_pos_col = put_pos_flat[0] % 8
+            put_pos_row = put_pos_flat[0] / 8
+            put_pos = (put_pos_col, put_pos_row)
+
+        # judge illegal move or not
+        if len(pos_list) == 0 and len(put_pos) == 0: # 'PASS' successful.
+            put_pos = []
+        elif len(pos_list) == 0 and len(put_pos) != 0:
+            sys.stderr.write("Illegal move! : Cannot put stone but AI cannot select 'PASS'.\n")
+            put_pos = []
+        elif len(pos_list) != 0 and len(put_pos) == 0:
+            sys.stderr.write("Illegal move! : Cannot 'PASS' this turn but AI selected it.\n")
+            put_pos = pos_list[0]
+        elif not(put_pos in pos_list):
+            sys.stderr.write("Illegal move! : Cannot put stone at AI selected postion.\n")
+            put_pos = pos_list[0]
+
+        return put_pos
+
     def backUpAllState(self, storage):
         storage.black_pos_list = []
         storage.white_pos_list = []
@@ -347,6 +508,8 @@ class MainFrame(wx.Frame):
     def putStone(self, put_pos):
         pos_list, gain_list = self.scanPuttableCell()
         hit = 0
+        print "pos_list(putStone) = " + str(pos_list)
+        print "put_pos(putStone) = " + str(put_pos)
         for pos in pos_list:
             if pos == put_pos:
                 hit = 1
@@ -518,9 +681,17 @@ class MainFrame(wx.Frame):
             self.second_player = "computer"
 
     def onGameStart(self, event):
+        global gMlpModelBlack
+        global gMlpModelWhite
+
         self.setInitialState()
         for i in range(0,4):
             self.radio_box.EnableItem(i, False)
+        
+        if self.comp_ai_a_cb.GetValue() == "MLP" or self.comp_ai_b_cb.GetValue() == "MLP":
+            serializers.load_npz(self.mlp_for_black_text.GetValue(), gMlpModelBlack)
+            serializers.load_npz(self.mlp_for_white_text.GetValue(), gMlpModelWhite)
+
         if self.first_player == "computer":
             self.doComputer(True)
 
