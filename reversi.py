@@ -14,6 +14,7 @@
 #
 import wx
 import random
+import os
 import sys
 import numpy as np
 import chainer
@@ -226,7 +227,9 @@ class MainFrame(wx.Frame):
         self.now_color = now_color
         comp_ai = 0 
         self.comp_ai = comp_ai
-
+        match_record = ""
+        self.match_record = match_record
+        
         self.setInitialState()
         black_pos_list = [(3,3),(4,4)]
         white_pos_list = [(3,4),(4,3)]
@@ -277,9 +280,11 @@ class MainFrame(wx.Frame):
         if len(put_pos) == 0:
             self.log_textctrl.AppendText("Pass the " + self.now_color + " stone computer's turn.\n")
             if self.now_color == "black":
+                self.match_record += "B[pass//]"
                 self.pass_flag[0] = 1
                 self.now_color = "white"
             else:
+                self.match_record += "W[pass//]"
                 self.pass_flag[1] = 1
                 self.now_color = "black"
             
@@ -303,11 +308,13 @@ class MainFrame(wx.Frame):
         ret = self.putStone(put_pos)
         if ret == 0:
             self.vecScan(put_pos, True)
-            
+            str_put_pos = self.posToStrPos(put_pos)
             if self.now_color == "black":
+                self.match_record += ("B[" + str_put_pos + "//]")
                 self.pass_flag[0] = 0
                 self.now_color = "white"
             else:
+                self.match_record += ("W[" + str_put_pos + "//]")
                 self.pass_flag[1] = 0
                 self.now_color = "black"
             
@@ -323,6 +330,20 @@ class MainFrame(wx.Frame):
         else:
             print ("error! illegal path.")
             return 2
+
+    def posToStrPos(self, pos):
+        ret = ""
+        for i, c in enumerate (['A','B','C','D','E','F','G','H']):
+            if i == pos[0]:
+                ret += c
+                break
+
+        for i in range(1,9):
+            if i == (pos[1] + 1):
+                ret += str(i)
+                break
+
+        return ret
 
     def decideComputerNext(self, pos_list, gain_list):
         print ("pos_list :" + str(pos_list))
@@ -705,6 +726,7 @@ class MainFrame(wx.Frame):
             self.showWarnDlg("Select \"Computer vs Computer\".")
             return
 
+        
         loop_max = int(loop_max)
         print loop_max
         comp_a_win_num = 0
@@ -714,7 +736,15 @@ class MainFrame(wx.Frame):
         self.comp_b_win_num_label.SetValue("0")
         self.draw_num_label.SetValue("0")
         
+        # match record file check
+        if os.path.exists("./record.log"):
+            os.remove("./record.log")
+
         for loop_cnt in range(0,loop_max):
+            if self.comp_ai_a_cb.GetValue() == "MLP" or self.comp_ai_b_cb.GetValue() == "MLP":
+                serializers.load_npz(self.mlp_for_black_text.GetValue(), gMlpModelBlack)
+                serializers.load_npz(self.mlp_for_white_text.GetValue(), gMlpModelWhite)
+
             self.setInitialState()
             if self.comp_ai < 0:
                 black_computer = "A"
@@ -736,6 +766,8 @@ class MainFrame(wx.Frame):
             else:
                 comp_b_win_num += 1
 
+            self.outputRecord()
+
         self.comp_a_win_num_label.SetValue(str(comp_a_win_num))
         self.comp_b_win_num_label.SetValue(str(comp_b_win_num))
         self.draw_num_label.SetValue(str(draw_num))
@@ -754,6 +786,7 @@ class MainFrame(wx.Frame):
         self.updateScoreLabel()
         self.now_color = "black"
         self.log_textctrl.Clear()
+        self.match_record = "(;[]BO[8 -------- -------- -------- ---O*--- ---*O--- -------- -------- -------- *]"
         if self.first_player == "computer" and self.second_player == "computer":
             self.comp_ai = random.choice([-1,1])
         else:
@@ -764,6 +797,11 @@ class MainFrame(wx.Frame):
         self.log_textctrl.AppendText("")
         for i in range(0,4):
             self.radio_box.EnableItem(i, True)
+
+    def outputRecord(self):
+        f = open('./record.log', 'a')
+        f.write(self.match_record + ';)\n')
+
 
 class StateStorage():
     def __init__(self, pass_flag, player_score, now_color, comp_ai, black_pos_list, white_pos_list):
