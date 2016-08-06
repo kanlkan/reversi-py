@@ -25,7 +25,7 @@ import chainer.functions as F
 import chainer.links as L
 from chainer.training import extensions
 
-gVersion = "1.1.0"
+gVersion = "1.2.0"
 gVec = [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)]
 gMaxDepth = 10
 gGain = [( 30, -12,  0, -1, -1,  0, -12,  30), \
