@@ -144,9 +144,9 @@ row = []
 argv = sys.argv
 argc = len(argv)
 
-if argc != 3:
+if argc != 5:
     print 'Usage'
-    print '    python ' + str(argv[0]) + ' <record_filename> <type>'
+    print '    python ' + str(argv[0]) + ' <record_filename> <type> <batch_size> <epoch>'
     print '        type : black'
     print '               black_win'
     print '               white'
@@ -162,6 +162,9 @@ for t in ['black', 'black_win', 'white', 'white_win']:
 if build_type == '':
     print 'record type is illegal.'
     quit()
+
+bs = int(argv[3])
+epoch = int(argv[4])
 
 #-- load record --#
 f = open(argv[1], "r")
@@ -256,14 +259,14 @@ X = np.array(record_X, dtype=np.float32)
 y = np.array(record_y, dtype=np.int32)
 
 train = datasets.TupleDataset(X, y)
-train_iter = iterators.SerialIterator(train, batch_size=100)
+train_iter = iterators.SerialIterator(train, batch_size=bs)
 
 model = Classifier(MLP())
 optimizer = optimizers.SGD()
 optimizer.setup(model)
 
 updater = training.StandardUpdater(train_iter, optimizer)
-trainer = training.Trainer(updater, (1000, 'epoch'), out='result')
+trainer = training.Trainer(updater, (epoch, 'epoch'), out='result')
 
 trainer.extend(extensions.ProgressBar())
 trainer.run()
