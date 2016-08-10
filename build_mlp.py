@@ -119,7 +119,7 @@ def pos_str2pos_index(pos_str):
             pos_index.append(i)
     
     for i, c in enumerate(gCol):
-        if pos_str[0] == c:
+        if pos_str[0].upper() == c:
             pos_index.append(i)
 
 
@@ -168,8 +168,9 @@ epoch = int(argv[4])
 
 #-- load record --#
 f = open(argv[1], "r")
-line_cnt = 1
+line_cnt = 0
 for line in f:
+    line_cnt += 1
     print 'Line Count = ' + str(line_cnt)
     idx = line.find("BO[8")
     if idx == -1:
@@ -251,15 +252,24 @@ for line in f:
     board = []
     temp2_X = []
     temp2_y = []
-    line_cnt += 1
 
 
 #-- MLP model and Training --#
-X = np.array(record_X, dtype=np.float32)
-y = np.array(record_y, dtype=np.int32)
+X_ = record_X[0:-1001]
+y_ = record_y[0:-1001]
+Xt_ = record_X[-1000:]
+yt_ = record_y[-1000:]
+
+X = np.array(X_, dtype=np.float32)
+y = np.array(y_, dtype=np.int32)
+Xt = np.array(Xt_, dtype=np.float32)
+yt = np.array(yt_, dtype=np.int32)
 
 train = datasets.TupleDataset(X, y)
-train_iter = iterators.SerialIterator(train, batch_size=bs)
+train_iter = iterators.SerialIterator(train, batch_size=bs, shuffle=True)
+test = datasets.TupleDataset(Xt, yt)
+test_iter = iterators.SerialIterator(test, batch_size=bs, repeat=False, shuffle=False)
+
 
 model = Classifier(MLP())
 optimizer = optimizers.SGD()
@@ -268,6 +278,9 @@ optimizer.setup(model)
 updater = training.StandardUpdater(train_iter, optimizer)
 trainer = training.Trainer(updater, (epoch, 'epoch'), out='result')
 
+trainer.extend(extensions.Evaluator(test_iter, model))
+trainer.extend(extensions.LogReport())
+trainer.extend(extensions.PrintReport(['epoch', 'main/accuracy', 'validation/main/accuracy']))
 trainer.extend(extensions.ProgressBar())
 trainer.run()
 
