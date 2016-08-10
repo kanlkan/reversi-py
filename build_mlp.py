@@ -202,7 +202,7 @@ for line in f:
             temp_X.append(board)
             pos_str = line[i+2] + line[i+3]
             #print pos_str
-            if pos_str == "pa":    # pass
+            if pos_str.lower() == "pa":    # pass
                 temp_y.append(64)
                 # board state is not change
                 print_board(board)

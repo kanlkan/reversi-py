@@ -491,7 +491,7 @@ class MainFrame(wx.Frame):
             sys.stderr.write("Illegal move! : Cannot 'PASS' this turn but AI selected it.\n")
             put_pos = pos_list[0]
         elif not(put_pos in pos_list):
-            sys.stderr.write("Illegal move! : Cannot put stone at AI selected postion.\n")
+            sys.stderr.write("Illegal move! : Cannot put stone at AI selected position.\n")
             put_pos = pos_list[0]
 
         return put_pos
