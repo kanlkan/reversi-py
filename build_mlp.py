@@ -4,6 +4,7 @@
 # 0 : none
 # 1 : black
 # 2 : white
+# 3 : puttable
 # 
 
 import sys
@@ -15,6 +16,7 @@ from chainer import Link, Chain, ChainList
 import chainer.functions as F
 import chainer.links as L
 from chainer.training import extensions
+from copy import deepcopy
 
 gVec = [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)]
 gCol = ('A','B','C','D','E','F','G','H')
@@ -88,6 +90,35 @@ def update_board(board, pos_str, clr):
 
     return updated_board
 
+def add_puttable_marker(board, clr):
+    updated_board = [[0 for col in range(8)] for row in range(8)]
+    pos_list = []
+    for r in range(8):
+        for c in range(8):
+            # this position has a stone 
+            if board[r][c] == 1 or board[r][c] == 2:
+                continue
+
+            for v in gVec:
+                for i in range(1, 8):
+                    # out of board
+                    if r+v[0]*(i+1) > 7 or c+v[1]*(i+1) > 7 or\
+                       r+v[0]*(i+1) < 0 or c+v[1]*(i+1) < 0:
+                           continue
+
+                    if board[r+v[0]*i][c+v[1]*i] == (clr % 2 + 1):
+                        if board[r+v[0]*(i+1)][c+v[1]*(i+1)] == clr:
+                            pos_list.append([r,c])
+                            break
+                    else:
+                        break
+
+    updated_board = deepcopy(board)
+    for pos in pos_list:
+        updated_board[pos[0]][pos[1]] = 3
+
+    return updated_board
+
 def who_is_winner(board):
     # ret : 0  draw
     #       1  black win
@@ -144,14 +175,20 @@ row = []
 argv = sys.argv
 argc = len(argv)
 
-if argc != 5:
+if argc < 5:
     print 'Usage'
-    print '    python ' + str(argv[0]) + ' <record_filename> <type> <batch_size> <epoch>'
+    print '    python ' + str(argv[0]) + ' <record_filename> <type> <batch_size> <epoch> [puttable marker on]'
     print '        type : black'
     print '               black_win'
     print '               white'
     print '               white_win'
+    print ''
+    print '        puttable marker on : True (default : False)'
     quit()
+
+mark_on = False
+if argc == 6 and argv[5].upper() == 'TRUE':
+    mark_on = True
 
 # check type
 build_type = ''
@@ -199,7 +236,19 @@ for line in f:
     i = idx+9*8+2
     while line[i] != ';':
         if (line[i] == 'B' or line[i] == 'W') and line[i+1] == '[':
-            temp_X.append(board)
+            if line[i] == 'B':
+               clr = 1
+            elif line[i] == 'W':
+                clr = 2
+            else:
+                clr = 0
+                assert False, "Stone Color is illegal."
+
+            if mark_on:
+                temp_X.append(add_puttable_marker(board, clr))
+            else:
+                temp_X.append(board)
+
             pos_str = line[i+2] + line[i+3]
             #print pos_str
             if pos_str.lower() == "pa":    # pass
@@ -209,14 +258,6 @@ for line in f:
                 #print "y = 64"
                 #print ""
             else:
-                if line[i] == 'B':
-                    clr = 1
-                elif line[i] == 'W':
-                    clr = 2
-                else:
-                    clr = 0
-                    assert False, "Stone Color is illegal."
-
                 pos_index_flat = pos_str2pos_index_flat(pos_str)
                 temp_y.append(pos_index_flat)
                 board = update_board(board, pos_str, clr)
