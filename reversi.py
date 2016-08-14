@@ -229,7 +229,9 @@ class MainFrame(wx.Frame):
         self.comp_ai = comp_ai
         match_record = ""
         self.match_record = match_record
-        
+        puttable_mark = False
+        self.puttable_mark = puttable_mark
+
         self.setInitialState()
         black_pos_list = [(3,3),(4,4)]
         white_pos_list = [(3,4),(4,3)]
@@ -450,9 +452,12 @@ class MainFrame(wx.Frame):
         # make input(board state)
         board = []
         row = []
+        print "puttable_mark : " + str(self.puttable_mark)
         for i in range(0,8):
             for j in range(0,8):
-                if self.getCellState([j,i], (0,0)) == "green":
+                if self.puttable_mark == True and pos_list.count((j,i)) > 0:
+                    row.append(3)
+                elif self.getCellState([j,i], (0,0)) == "green":
                     row.append(0)
                 elif self.getCellState([j,i], (0,0)) == "black":
                     row.append(1)
@@ -461,6 +466,9 @@ class MainFrame(wx.Frame):
 
             board.append(row)
             row = []
+
+        for row in board:
+            print row
 
         X = np.array([board], dtype=np.float32)
 
@@ -710,8 +718,13 @@ class MainFrame(wx.Frame):
             self.radio_box.EnableItem(i, False)
         
         if self.comp_ai_a_cb.GetValue() == "MLP" or self.comp_ai_b_cb.GetValue() == "MLP":
-            serializers.load_npz(self.mlp_for_black_text.GetValue(), gMlpModelBlack)
-            serializers.load_npz(self.mlp_for_white_text.GetValue(), gMlpModelWhite)
+            model_name_black = str(self.mlp_for_black_text.GetValue())
+            model_name_white = str(self.mlp_for_black_text.GetValue())
+            serializers.load_npz(model_name_black, gMlpModelBlack)
+            serializers.load_npz(model_name_white, gMlpModelWhite)
+            if model_name_black.find("puttable_mark") != -1 and\
+               model_name_white.find("puttable_mark") != -1 :
+                self.puttable_mark = True
 
         if self.first_player == "computer":
             self.doComputer(True)
@@ -742,15 +755,19 @@ class MainFrame(wx.Frame):
 
         for loop_cnt in range(0,loop_max):
             if self.comp_ai_a_cb.GetValue() == "MLP" or self.comp_ai_b_cb.GetValue() == "MLP":
-                serializers.load_npz(self.mlp_for_black_text.GetValue(), gMlpModelBlack)
-                serializers.load_npz(self.mlp_for_white_text.GetValue(), gMlpModelWhite)
+                model_name_black = str(self.mlp_for_black_text.GetValue())
+                model_name_white = str(self.mlp_for_black_text.GetValue())
+                serializers.load_npz(model_name_black, gMlpModelBlack)
+                serializers.load_npz(model_name_white, gMlpModelWhite)
+                if model_name_black.find("puttable_mark") != -1 and\
+                   model_name_white.find("puttable_mark") != -1 :
+                    self.puttable_mark = True
 
             self.setInitialState()
             if self.comp_ai < 0:
                 black_computer = "A"
             else:
                 black_computer = "B"
-
             for i in range(0,4):
                 self.radio_box.EnableItem(i, False)
             
@@ -785,6 +802,7 @@ class MainFrame(wx.Frame):
         self.player_score = [2, 2]
         self.updateScoreLabel()
         self.now_color = "black"
+        self.puttable_mark = False
         self.log_textctrl.Clear()
         self.match_record = "(;[]BO[8 -------- -------- -------- ---O*--- ---*O--- -------- -------- -------- *]"
         if self.first_player == "computer" and self.second_player == "computer":
