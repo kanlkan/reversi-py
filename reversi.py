@@ -754,6 +754,8 @@ class MainFrame(wx.Frame):
             os.remove("./record.log")
 
         for loop_cnt in range(0,loop_max):
+            self.setInitialState()
+            
             if self.comp_ai_a_cb.GetValue() == "MLP" or self.comp_ai_b_cb.GetValue() == "MLP":
                 model_name_black = str(self.mlp_for_black_text.GetValue())
                 model_name_white = str(self.mlp_for_black_text.GetValue())
@@ -763,7 +765,6 @@ class MainFrame(wx.Frame):
                    model_name_white.find("puttable_mark") != -1 :
                     self.puttable_mark = True
 
-            self.setInitialState()
             if self.comp_ai < 0:
                 black_computer = "A"
             else:
